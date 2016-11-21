@@ -27,6 +27,7 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.net.ConnectivityManager;
 import android.os.Bundle;
+import android.os.PersistableBundle;
 import android.preference.PreferenceManager;
 import android.support.annotation.NonNull;
 import android.support.design.widget.AppBarLayout;
@@ -58,6 +59,8 @@ public class MainActivity extends AppCompatActivity implements AppbarScroll, Fra
 
     AppBarLayout appBarLayout;
     TextView headerTV;
+    Fragment filesFragment;
+    Fragment devicesFragment;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -69,6 +72,9 @@ public class MainActivity extends AppCompatActivity implements AppbarScroll, Fra
         getSupportActionBar().setDisplayShowTitleEnabled(false);
         appBarLayout = (AppBarLayout) findViewById(R.id.app_bar);
         headerTV = (TextView) findViewById(R.id.header_tv);
+        if (devicesFragment == null)
+            devicesFragment = new DevicesFragment();
+
         new DrawerBuilder()
                 .withActivity(this)
                 .withToolbar(toolbar)
@@ -113,7 +119,7 @@ public class MainActivity extends AppCompatActivity implements AppbarScroll, Fra
                             @Override
                             public void onClick(@NonNull BottomDialog bottomDialog) {
                                 bottomDialog.dismiss();
-                                changeFragment(new DevicesFragment(), false);
+                                changeFragment(devicesFragment, false);
                                 SharedPreferences.Editor edit = PreferenceManager.getDefaultSharedPreferences(context).edit();
                                 edit.putBoolean("idgaf_for_data_costs_i_eez_reech", true);
                                 edit.commit();
@@ -128,10 +134,10 @@ public class MainActivity extends AppCompatActivity implements AppbarScroll, Fra
                         })
                         .show();
             } else {
-                changeFragment(new DevicesFragment(), false);
+                changeFragment(devicesFragment, false);
             }
         } else {
-            changeFragment(new DevicesFragment(), false);
+            changeFragment(devicesFragment, false);
         }
 
         boolean its_unofficial = PreferenceManager.getDefaultSharedPreferences(context).getBoolean("its_unofficial", false);
@@ -190,6 +196,7 @@ public class MainActivity extends AppCompatActivity implements AppbarScroll, Fra
     }
     @Override
     public void reattach() {
+        Log.i(Constants.TAG, "reattaching");
         FragmentManager fragmentManager = getFragmentManager();
         Fragment current = fragmentManager.findFragmentById(R.id.mainFrame);
         if (current instanceof DevicesFragment) {
@@ -205,8 +212,23 @@ public class MainActivity extends AppCompatActivity implements AppbarScroll, Fra
         Bundle bundle = new Bundle();
         Log.i(Constants.TAG, "displayFiles: DID " + did);
         bundle.putString("did", did);
-        Fragment filesFragment = new FilesFragment();
+        if (filesFragment == null)
+            filesFragment = new FilesFragment();
         filesFragment.setArguments(bundle);
         changeFragment(filesFragment, true);
+    }
+
+    @Override
+    public void onSaveInstanceState(Bundle outState) {
+        super.onSaveInstanceState(outState);
+        Log.i(Constants.TAG, "onSaveInstanceState: Activity");
+        getFragmentManager().putFragment(outState, "devicesFragment", devicesFragment);
+    }
+
+    @Override
+    public void onRestoreInstanceState(Bundle savedInstanceState) {
+        super.onRestoreInstanceState(savedInstanceState);
+        Log.i(Constants.TAG, "onRestoreInstanceState: Activity");
+        devicesFragment = getFragmentManager().getFragment(savedInstanceState, "devicesFragment");
     }
 }

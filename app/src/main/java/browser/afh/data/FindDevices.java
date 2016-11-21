@@ -20,6 +20,7 @@ package browser.afh.data;
  * along with AFH Browser. If not, see <http://www.gnu.org/licenses/>.
  */
 
+import android.content.Context;
 import android.os.AsyncTask;
 import android.support.v4.content.ContextCompat;
 import android.support.v7.widget.DefaultItemAnimator;
@@ -59,43 +60,60 @@ import retrofit2.Callback;
 public class FindDevices {
 
     private final String TAG = Constants.TAG;
-    private View rootView;
+    private Context context;
     private RequestQueue queue;
-    private final PullRefreshLayout deviceRefreshLayout;
-    private List<DeviceData> devices = new ArrayList<>();
+    private PullRefreshLayout deviceRefreshLayout;
+    private ArrayList<DeviceData> devices;
     private int currentPage = 0;
     private FastItemAdapter devAdapter;
     private int pages[] = null;
     private boolean refresh = false, morePagesRequested = false, devicesWereEmpty = true;
     private String headerMessage;
     private FragmentChanges fragmentChanges;
+    private DevicesInterface devicesInterface;
+    private AppbarScroll appbarScroll;
 
-    public FindDevices(final View rootView, final RequestQueue queue, final AppbarScroll appbarScroll, final FragmentChanges fragmentChanges) {
-        this.rootView = rootView;
+    public FindDevices(final Context context, final RequestQueue queue, final ArrayList <DeviceData> devicesList, final AppbarScroll appbarScroll, final FragmentChanges fragmentChanges, final DevicesInterface devicesInterface) {
+        this.context = context;
         this.queue = queue;
+        this.devicesInterface = devicesInterface;
+        this.appbarScroll = appbarScroll;
+        if(devices == null)
+            devices = new ArrayList<>();
+        else
+            devices = devicesList;
         this.fragmentChanges = fragmentChanges;
-        deviceRefreshLayout = (PullRefreshLayout) rootView.findViewById(R.id.deviceRefresh);
-        headerMessage = rootView.getContext().getResources().getString(R.string.device_list_header_text);
+        headerMessage = context.getResources().getString(R.string.device_list_header_text);
 
         devAdapter = new FastItemAdapter();
-        final RecyclerView deviceRecyclerView = (RecyclerView) rootView.findViewById(R.id.deviceList);
-        deviceRecyclerView.setLayoutManager(new LinearLayoutManager(rootView.getContext()));
-        deviceRecyclerView.setItemAnimator(new DefaultItemAnimator());
         devAdapter.withSelectable(true);
-        final StickyHeaderAdapter stickyHeaderAdapter = new StickyHeaderAdapter();
-        deviceRecyclerView.setAdapter(stickyHeaderAdapter.wrap(devAdapter));
-        final StickyRecyclerHeadersDecoration decoration = new StickyRecyclerHeadersDecoration(stickyHeaderAdapter);
-        deviceRecyclerView.addItemDecoration(decoration);
-        TouchScrollBar materialScrollBar = new TouchScrollBar(rootView.getContext(), deviceRecyclerView, true);
-        materialScrollBar.setHandleColour(ContextCompat.getColor(rootView.getContext(), R.color.accent));
-        materialScrollBar.addIndicator(new AlphabetIndicator(rootView.getContext()), true);
 
+
+
+
+
+
+    }
+
+    public void setup(final View rootView) {
 
         /* Needed to prevent PullRefreshLayout from refreshing every time someone
          * tries to scroll down. The fast scrollbar needs RecyclerView to be a child
          * of a RelativeLayout. PullRefreshLayout needs a scrollable child. That makes this
          * workaround necessary.
          */
+        final RecyclerView deviceRecyclerView = (RecyclerView) rootView.findViewById(R.id.deviceList);
+        deviceRecyclerView.setLayoutManager(new LinearLayoutManager(context));
+        deviceRecyclerView.setItemAnimator(new DefaultItemAnimator());
+        final StickyHeaderAdapter stickyHeaderAdapter = new StickyHeaderAdapter();
+        deviceRecyclerView.setAdapter(stickyHeaderAdapter.wrap(devAdapter));
+        final StickyRecyclerHeadersDecoration decoration = new StickyRecyclerHeadersDecoration(stickyHeaderAdapter);
+        deviceRecyclerView.addItemDecoration(decoration);
+        TouchScrollBar materialScrollBar = new TouchScrollBar(context, deviceRecyclerView, true);
+        materialScrollBar.setHandleColour(ContextCompat.getColor(context, R.color.accent));
+        materialScrollBar.addIndicator(new AlphabetIndicator(context), true);
+
+
         deviceRecyclerView.setOnScrollListener(new RecyclerView.OnScrollListener() {
             @Override
             public void onScrolled(RecyclerView recyclerView, int dx, int dy) {
@@ -115,6 +133,8 @@ public class FindDevices {
                 }
             }
         });
+
+        deviceRefreshLayout = (PullRefreshLayout) rootView.findViewById(R.id.deviceRefresh);
 
         deviceRefreshLayout.setOnRefreshListener(new PullRefreshLayout.OnRefreshListener() {
             @Override
@@ -136,15 +156,13 @@ public class FindDevices {
                 return true;
             }
         });
-
     }
 
     public void findFirstDevice() {
-
         deviceRefreshLayout.setRefreshing(true);
         ApiInterface retro = RetroClient.getRetrofit().create(ApiInterface.class);
         if (!refresh) {
-            File cacheFile = new File(rootView.getContext().getCacheDir().toString() + "/devicelist");
+            File cacheFile = new File(context.getCacheDir().toString() + "/devicelist");
             new ReadCache(cacheFile).execute();
             return;
         }
@@ -181,7 +199,7 @@ public class FindDevices {
                 } else {
                     if (currentPage >= pages[3]) {
                         Collections.sort(devices, Comparators.byManufacturer);
-                        displayDevices();
+                        displayDevices(devicesWereEmpty);
                     } else {
                         if (!morePagesRequested) {
                             morePagesRequested = true;
@@ -200,19 +218,21 @@ public class FindDevices {
         });
     }
 
-    private void displayDevices() {
+    public void displayDevices(boolean devicesWereEmpty) {
         devAdapter.add(devices);
         deviceRefreshLayout.setRefreshing(false);
+        devicesInterface.devices(devices);
         Thread t = new Thread(new Runnable() {
             @Override
             public void run() {
-                CacheList.write(devices, new File(rootView.getContext().getCacheDir().toString() + "/devicelist"));
+                CacheList.write(devices, new File(context.getCacheDir().toString() + "/devicelist"));
             }
         }
         );
         t.start();
         Log.i(TAG, "parseDevices: " + devices.size());
         if(devicesWereEmpty) {
+            this.devicesWereEmpty = false;
             fragmentChanges.reattach();
         }
     }
@@ -229,7 +249,7 @@ public class FindDevices {
         return pages;
     }
 
-    private class ReadCache extends AsyncTask<Void, Void, List> {
+    private class ReadCache extends AsyncTask<Void, Void, ArrayList> {
         File cacheFile;
 
         ReadCache(File cacheFile) {
@@ -237,17 +257,17 @@ public class FindDevices {
         }
 
         @Override
-        public List doInBackground(Void... v) {
+        public ArrayList doInBackground(Void... v) {
             return CacheList.read(cacheFile);
         }
 
         @Override
-        protected void onPostExecute(List output) {
+        protected void onPostExecute(ArrayList output) {
             if (output != null) {
-                devices = output;
+                devices.clear();
+                devices.addAll(output);
                 devicesWereEmpty = false;
-                queue.start();
-                displayDevices();
+                displayDevices(false);
             } else {
                 deviceRefreshLayout.setRefreshing(true);
                 refresh = true;
@@ -266,5 +286,9 @@ public class FindDevices {
     public interface FragmentChanges {
         void reattach();
         void displayFiles(String did);
+    }
+
+    public interface DevicesInterface {
+        void devices(ArrayList<DeviceData> devices);
     }
 }

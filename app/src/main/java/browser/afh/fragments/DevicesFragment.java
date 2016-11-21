@@ -20,20 +20,29 @@ package browser.afh.fragments;
 import android.app.Activity;
 import android.os.Bundle;
 import android.app.Fragment;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import browser.afh.data.FindDevices;
 import browser.afh.data.FindDevices.AppbarScroll;
+import browser.afh.data.FindDevices.DevicesInterface;
 import browser.afh.data.FindDevices.FragmentChanges;
 import browser.afh.R;
+import browser.afh.tools.Constants;
 import browser.afh.tools.VolleySingleton;
+import browser.afh.types.DeviceData;
 
-public class DevicesFragment extends Fragment {
+public class DevicesFragment extends Fragment implements DevicesInterface {
     View rootView;
     AppbarScroll appbarScroll;
     FragmentChanges fragmentChanges;
+    ArrayList<DeviceData> devices = null;
+    FindDevices findDevices;
 
     @Override
     public void onAttach(Activity activity) {
@@ -46,10 +55,50 @@ public class DevicesFragment extends Fragment {
         }
     }
     @Override
-    public View onCreateView(LayoutInflater inflater, ViewGroup container,
-                             Bundle savedInstanceState) {
+    public void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        Log.i(Constants.TAG, "onCreate");
+
+        DevicesInterface devicesInterface = this;
+        if (savedInstanceState != null) {
+            Log.i(Constants.TAG, "onCreate: not null");
+            devices = (ArrayList<DeviceData>) savedInstanceState.getSerializable("devices");
+            if (devices != null)
+                Log.i(Constants.TAG, "onCreate: devices length " + devices.size());
+        }
+        findDevices = new FindDevices(getActivity(), VolleySingleton.getInstance(getActivity())
+                .getRequestQueue(),
+                devices, appbarScroll, fragmentChanges, devicesInterface);
+    }
+    @Override
+    public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
+
         rootView = inflater.inflate(R.layout.fragment_devices, container, false);
-        new FindDevices(rootView, VolleySingleton.getInstance(getActivity()).getRequestQueue(), appbarScroll, fragmentChanges).findFirstDevice();
+        findDevices.setup(rootView);
+
+        if (devices == null) {
+            Log.i(Constants.TAG, "onCreateView: devices null");
+            findDevices.findFirstDevice();
+        } else {
+            Log.i(Constants.TAG, "onCreateView: devices not null. Size " + devices.size());
+            findDevices.displayDevices(false);
+        }
+        //findDevices.findFirstDevice();
         return rootView;
+    }
+
+    @Override
+    public void onSaveInstanceState(Bundle outState) {
+        super.onSaveInstanceState(outState);
+        Log.i(Constants.TAG, "onSaveInstanceState: ");
+        outState.putSerializable("devices", devices);
+    }
+
+    @Override
+    public void devices(ArrayList<DeviceData> devices) {
+        Log.i(Constants.TAG, "devices: received");
+        if(devices != null)
+            Log.i(Constants.TAG, "devices: size " + devices.size());
+        this.devices = devices;
     }
 }

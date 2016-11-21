@@ -28,10 +28,10 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
-import java.util.List;
+import java.util.ArrayList;
 
 public class CacheList {
-    public static void write(List list, File file) {
+    public static void write(ArrayList list, File file) {
         if (file.exists())
             file.delete();
         ObjectOutputStream oos;
@@ -43,19 +43,22 @@ public class CacheList {
         }
     }
 
-    public static List read(File file) {
-        List list = null;
+    public static ArrayList read(File file) {
+        ArrayList list = null;
+        String TAG = Constants.TAG;
+        Log.i(TAG, "read: File : " + file.getAbsolutePath());
         if (!file.exists()) {
-            Log.i(Constants.TAG, "read: File missing");
+            Log.i(TAG, "read: File missing");
             return null;
         }
         try {
             ObjectInputStream objectInputStream = new ObjectInputStream(new FileInputStream(file));
-            list = (List) objectInputStream.readObject();
+            list = (ArrayList) objectInputStream.readObject();
             objectInputStream.close();
         } catch (IOException e) {
-            Log.i(Constants.TAG, "read: " + e.toString());
+            Log.i(TAG, "read: " + e.toString());
         } catch (ClassNotFoundException e) {
+            Log.i(TAG, "read: OOPS : " + e.toString());
             file.delete();
         }
         return list;
