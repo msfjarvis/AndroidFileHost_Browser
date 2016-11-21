@@ -199,7 +199,7 @@ public class FindDevices {
                 } else {
                     if (currentPage >= pages[3]) {
                         Collections.sort(devices, Comparators.byManufacturer);
-                        displayDevices(devicesWereEmpty);
+                        displayDevices(devicesWereEmpty, devices, false);
                     } else {
                         if (!morePagesRequested) {
                             morePagesRequested = true;
@@ -218,7 +218,11 @@ public class FindDevices {
         });
     }
 
-    public void displayDevices(boolean devicesWereEmpty) {
+    public void displayDevices(boolean devicesWereEmpty, final ArrayList<DeviceData> devices, boolean calledFromStateResume) {
+
+        if (calledFromStateResume)
+            this.devices = devices;
+
         devAdapter.add(devices);
         deviceRefreshLayout.setRefreshing(false);
         devicesInterface.devices(devices);
@@ -227,8 +231,7 @@ public class FindDevices {
             public void run() {
                 CacheList.write(devices, new File(context.getCacheDir().toString() + "/devicelist"));
             }
-        }
-        );
+        });
         t.start();
         Log.i(TAG, "parseDevices: " + devices.size());
         if(devicesWereEmpty) {
@@ -267,7 +270,7 @@ public class FindDevices {
                 devices.clear();
                 devices.addAll(output);
                 devicesWereEmpty = false;
-                displayDevices(false);
+                displayDevices(false, devices, false);
             } else {
                 deviceRefreshLayout.setRefreshing(true);
                 refresh = true;

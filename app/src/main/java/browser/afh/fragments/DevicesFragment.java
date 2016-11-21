@@ -81,7 +81,7 @@ public class DevicesFragment extends Fragment implements DevicesInterface {
             findDevices.findFirstDevice();
         } else {
             Log.i(Constants.TAG, "onCreateView: devices not null. Size " + devices.size());
-            findDevices.displayDevices(false);
+            findDevices.displayDevices(false, devices, true);
         }
         //findDevices.findFirstDevice();
         return rootView;
