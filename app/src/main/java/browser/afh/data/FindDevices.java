@@ -20,11 +20,8 @@ package browser.afh.data;
  * along with AFH Browser. If not, see <http://www.gnu.org/licenses/>.
  */
 
-import android.animation.Animator;
-import android.animation.AnimatorListenerAdapter;
 import android.os.AsyncTask;
 import android.support.v4.content.ContextCompat;
-import android.support.v7.widget.CardView;
 import android.support.v7.widget.DefaultItemAnimator;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
@@ -69,15 +66,14 @@ public class FindDevices {
     private int currentPage = 0;
     private FastItemAdapter devAdapter;
     private int pages[] = null;
-    private FindFiles findFiles;
     private boolean refresh = false, morePagesRequested = false, devicesWereEmpty = true;
     private String headerMessage;
-    private FragmentRattach fragmentRattach;
+    private FragmentChanges fragmentChanges;
 
-    public FindDevices(final View rootView, final RequestQueue queue, final AppbarScroll appbarScroll, final FragmentRattach fragmentRattach) {
+    public FindDevices(final View rootView, final RequestQueue queue, final AppbarScroll appbarScroll, final FragmentChanges fragmentChanges) {
         this.rootView = rootView;
         this.queue = queue;
-        this.fragmentRattach = fragmentRattach;
+        this.fragmentChanges = fragmentChanges;
         deviceRefreshLayout = (PullRefreshLayout) rootView.findViewById(R.id.deviceRefresh);
         headerMessage = rootView.getContext().getResources().getString(R.string.device_list_header_text);
 
@@ -120,8 +116,6 @@ public class FindDevices {
             }
         });
 
-        findFiles = new FindFiles(rootView, queue);
-
         deviceRefreshLayout.setOnRefreshListener(new PullRefreshLayout.OnRefreshListener() {
             @Override
             public void onRefresh() {
@@ -135,14 +129,10 @@ public class FindDevices {
         devAdapter.withOnClickListener(new FastAdapter.OnClickListener<DeviceData>() {
             @Override
             public boolean onClick(View v, IAdapter<DeviceData> adapter, DeviceData item, int position) {
-                animate();
-                appbarScroll.expand();
-                appbarScroll.setText(rootView.getContext().getResources().getString(R.string.files_list_header_text));
-                ((PullRefreshLayout) rootView.findViewById(R.id.swipeRefreshLayout)).setRefreshing(true);
                 // Just in case monkeys decide to tap around while the list is refreshing
                 // (List is cleared before refresh)
                 if (devices.size() > position)
-                    findFiles.start(devices.get(position).did);
+                    fragmentChanges.displayFiles(devices.get(position).did);
                 return true;
             }
         });
@@ -223,7 +213,7 @@ public class FindDevices {
         t.start();
         Log.i(TAG, "parseDevices: " + devices.size());
         if(devicesWereEmpty) {
-            fragmentRattach.reattach();
+            fragmentChanges.reattach();
         }
     }
 
@@ -237,27 +227,6 @@ public class FindDevices {
                 pages[i++] = Integer.parseInt(m.group());
         }
         return pages;
-    }
-
-    private void animate() {
-        final CardView deviceHolder = (CardView) rootView.findViewById(R.id.deviceCardView);
-        final CardView filesHolder = (CardView) rootView.findViewById(R.id.filesCardView);
-        filesHolder.setVisibility(View.VISIBLE);
-        filesHolder.setAlpha(0.0f);
-        deviceHolder.animate()
-                .setDuration(500)
-                .translationX(-deviceHolder.getWidth())
-                .alpha(0.0f)
-                .setListener(new AnimatorListenerAdapter() {
-                    @Override
-                    public void onAnimationEnd(Animator animation) {
-                        super.onAnimationEnd(animation);
-                        deviceHolder.setVisibility(View.GONE);
-                        filesHolder.animate()
-                                .setDuration(200)
-                                .alpha(1.0f);
-                    }
-                });
     }
 
     private class ReadCache extends AsyncTask<Void, Void, List> {
@@ -294,7 +263,8 @@ public class FindDevices {
         String getText();
     }
 
-    public interface FragmentRattach {
+    public interface FragmentChanges {
         void reattach();
+        void displayFiles(String did);
     }
 }

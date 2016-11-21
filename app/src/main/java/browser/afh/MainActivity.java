@@ -20,6 +20,7 @@ package browser.afh;
 import android.annotation.SuppressLint;
 import android.app.Fragment;
 import android.app.FragmentManager;
+import android.app.FragmentTransaction;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
@@ -31,6 +32,7 @@ import android.support.annotation.NonNull;
 import android.support.design.widget.AppBarLayout;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
+import android.util.Log;
 import android.view.View;
 import android.widget.TextView;
 
@@ -47,11 +49,12 @@ import com.mikepenz.materialdrawer.model.interfaces.IDrawerItem;
 
 import browser.afh.activities.PreferencesActivity;
 import browser.afh.data.FindDevices.AppbarScroll;
-import browser.afh.data.FindDevices.FragmentRattach;
-import browser.afh.fragments.MainFragment;
+import browser.afh.data.FindDevices.FragmentChanges;
+import browser.afh.fragments.DevicesFragment;
+import browser.afh.fragments.FilesFragment;
 import browser.afh.tools.Constants;
 
-public class MainActivity extends AppCompatActivity implements AppbarScroll, FragmentRattach {
+public class MainActivity extends AppCompatActivity implements AppbarScroll, FragmentChanges {
 
     AppBarLayout appBarLayout;
     TextView headerTV;
@@ -80,7 +83,7 @@ public class MainActivity extends AppCompatActivity implements AppbarScroll, Fra
                     @Override
                     public boolean onItemClick(View view, int position, IDrawerItem drawerItem) {
                         if (drawerItem.getIdentifier() == 0) {
-                            changeFragment(new MainFragment());
+                            changeFragment(new DevicesFragment(), false);
                         } else if (drawerItem.getIdentifier() == 1) {
                             new LibsBuilder()
                                     .withActivityStyle(Libs.ActivityStyle.LIGHT_DARK_TOOLBAR)
@@ -110,7 +113,7 @@ public class MainActivity extends AppCompatActivity implements AppbarScroll, Fra
                             @Override
                             public void onClick(@NonNull BottomDialog bottomDialog) {
                                 bottomDialog.dismiss();
-                                changeFragment(new MainFragment());
+                                changeFragment(new DevicesFragment(), false);
                                 SharedPreferences.Editor edit = PreferenceManager.getDefaultSharedPreferences(context).edit();
                                 edit.putBoolean("idgaf_for_data_costs_i_eez_reech", true);
                                 edit.commit();
@@ -125,10 +128,10 @@ public class MainActivity extends AppCompatActivity implements AppbarScroll, Fra
                         })
                         .show();
             } else {
-                changeFragment(new MainFragment());
+                changeFragment(new DevicesFragment(), false);
             }
         } else {
-            changeFragment(new MainFragment());
+            changeFragment(new DevicesFragment(), false);
         }
 
         boolean its_unofficial = PreferenceManager.getDefaultSharedPreferences(context).getBoolean("its_unofficial", false);
@@ -155,11 +158,13 @@ public class MainActivity extends AppCompatActivity implements AppbarScroll, Fra
 
     }
 
-    public void changeFragment(Fragment fragment) {
+    public void changeFragment(Fragment fragment, boolean addToBackStack) {
         FragmentManager fragmentManager = getFragmentManager();
-        fragmentManager.beginTransaction()
-                .replace(R.id.mainFrame, fragment)
-                .commit();
+        FragmentTransaction transaction = fragmentManager.beginTransaction();
+        transaction.replace(R.id.mainFrame, fragment);
+        if (addToBackStack)
+            transaction.addToBackStack(null);
+        transaction.commit();
     }
 
     public boolean checkIfMobileData() {
@@ -187,12 +192,21 @@ public class MainActivity extends AppCompatActivity implements AppbarScroll, Fra
     public void reattach() {
         FragmentManager fragmentManager = getFragmentManager();
         Fragment current = fragmentManager.findFragmentById(R.id.mainFrame);
-        if (current instanceof MainFragment) {
+        if (current instanceof DevicesFragment) {
             fragmentManager.beginTransaction()
                     .detach(current)
                     .attach(current)
                     .commit();
-            changeFragment(current);
+            changeFragment(current, false);
         }
+    }
+    @Override
+    public void displayFiles(String did) {
+        Bundle bundle = new Bundle();
+        Log.i(Constants.TAG, "displayFiles: DID " + did);
+        bundle.putString("did", did);
+        Fragment filesFragment = new FilesFragment();
+        filesFragment.setArguments(bundle);
+        changeFragment(filesFragment, true);
     }
 }

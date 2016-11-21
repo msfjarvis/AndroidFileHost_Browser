@@ -66,9 +66,10 @@ public class FindFiles {
     private final RequestQueue queue;
     private final Context context;
     private final String TAG = Constants.TAG;
-    SimpleDateFormat sdf;
+    private SimpleDateFormat sdf;
 
-    FindFiles(View rootView, RequestQueue queue) {
+    public FindFiles(View rootView, RequestQueue queue) {
+        queue.start();
         this.queue = queue;
         context = rootView.getContext();
 
@@ -106,7 +107,7 @@ public class FindFiles {
         fileList.setAdapter(adapter);
     }
 
-    void start(final String did) {
+    public void start(final String did) {
         savedID = did;
         String url = String.format(Constants.DID, did);
         Log.i(TAG, "start: DID: " + did);
